@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,11 +19,29 @@ func (p staticProvider) Connections() ([]telemetry.Connection, error) {
 
 func testService(t *testing.T) *Service {
 	t.Helper()
-	store := telemetry.NewStore(staticProvider{[]telemetry.Connection{{ID: "one", State: "ESTABLISHED", RemoteAddress: "192.0.2.1", RemotePort: 443, SentSegments: 10, Retransmits: 1}}}, time.Hour, time.Hour)
+	store := telemetry.NewStore(staticProvider{[]telemetry.Connection{{ID: "one", Family: 4, State: "ESTABLISHED", LocalAddress: "10.0.0.1", LocalPort: 25565, RemoteAddress: "192.0.2.1", RemotePort: 443, SentSegments: 10, Retransmits: 1}}}, time.Hour, time.Hour)
 	ctx, cancel := context.WithCancel(context.Background())
 	store.Start(ctx)
 	t.Cleanup(func() { cancel(); store.Stop() })
 	return &Service{cfg: Config{Token: "secret"}, store: store}
+}
+
+func TestAPIStructuredFilters(t *testing.T) {
+	svc := testService(t)
+	request := httptest.NewRequest(http.MethodGet, "/v1/tcp/connections?family=4&state=ESTABLISHED&local_port=25565,25566&local_cidr=10.0.0.0%2F8", nil)
+	request.Header.Set("Authorization", "Bearer secret")
+	response := httptest.NewRecorder()
+	svc.routes().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"total":1`) {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	request = httptest.NewRequest(http.MethodGet, "/v1/tcp/connections?family=6&remote_port=443", nil)
+	request.Header.Set("Authorization", "Bearer secret")
+	response = httptest.NewRecorder()
+	svc.routes().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"total":0`) {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
 }
 
 func TestAPIAuthenticationAndFiltering(t *testing.T) {

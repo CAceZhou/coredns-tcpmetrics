@@ -6,6 +6,7 @@ import "time"
 // from retransmitted segments and is therefore an estimate of packet loss.
 type Connection struct {
 	ID            string    `json:"id"`
+	Family        int       `json:"family"`
 	LocalAddress  string    `json:"local_address"`
 	LocalPort     uint16    `json:"local_port"`
 	RemoteAddress string    `json:"remote_address"`

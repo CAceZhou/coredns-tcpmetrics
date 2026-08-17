@@ -38,6 +38,18 @@ GET /v1/tcp/connections/{id}
 GET /v1/tcp/summary
 ```
 
+Connection queries also support exact structured filters:
+
+```text
+family=4|6
+local_port=25565,25566
+remote_port=25565,25566
+local_cidr=10.0.0.0/16
+remote_cidr=10.0.0.0/16
+```
+
+Every connection includes a `family` field in addition to its endpoints and TCP_INFO counters.
+
 The exported `telemetry` package provides the shared in-process store consumed by `coredns-meshroute` connection rules.
 
 ## Development

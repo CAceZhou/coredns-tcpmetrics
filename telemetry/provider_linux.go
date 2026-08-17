@@ -104,7 +104,7 @@ func parseDiag(family uint8, data []byte) (Connection, bool) {
 		return Connection{}, false
 	}
 	row := Connection{
-		LocalAddress: local.String(), RemoteAddress: remote.String(),
+		Family: addressFamily(family), LocalAddress: local.String(), RemoteAddress: remote.String(),
 		LocalPort: binary.BigEndian.Uint16(data[4:6]), RemotePort: binary.BigEndian.Uint16(data[6:8]),
 		State: tcpState(data[1]), Inode: binary.LittleEndian.Uint32(data[68:72]),
 	}
@@ -124,6 +124,16 @@ func parseDiag(family uint8, data []byte) (Connection, bool) {
 		attrs = attrs[aligned:]
 	}
 	return row, true
+}
+
+func addressFamily(family uint8) int {
+	if family == syscall.AF_INET {
+		return 4
+	}
+	if family == syscall.AF_INET6 {
+		return 6
+	}
+	return 0
 }
 
 func parseAddress(family uint8, raw []byte) net.IP {
